@@ -1,0 +1,8 @@
+parameters:
+  serviceList: []
+
+jobs:
+- ${{ each serviceName in parameters.serviceList }}:
+  - template: process-service.yml
+    parameters:
+      service: ${{ serviceName }}

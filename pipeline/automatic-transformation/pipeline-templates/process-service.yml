@@ -1,0 +1,43 @@
+parameters:
+  service: ''
+
+jobs:
+- job: ''
+  displayName: ${{ parameters.service }}
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - checkout: self
+    persistCredentials: true
+  - script: sudo apt-get install -y xsltproc xmlstarlet 
+    displayName: Install packages
+  - script: git config --global user.email "trans-pipeline@example.com" && git config --global user.name "Tranformation Pipeline"
+    displayName: Configure GIT
+  - script: git clone --depth=1 --branch=master $GIT_URL services/${{ parameters.service }} && rm -rf services/${{ parameters.service }}/.git
+    displayName: Get ${{ parameters.service }} service source
+    env:
+      GIT_URL: https://$(GIT_USER_PASS)@dev.azure.com/pmuszynski/${{ parameters.service }}/_git/${{ parameters.service }}
+
+  - script: mv services/${{ parameters.service }}/pom.xml /tmp/pom.xml && xsltproc automatic-transformation/pom-transform.xsl /tmp/pom.xml > services/${{ parameters.service }}/pom.xml
+    displayName: Transform pom.xml
+
+  - script: echo "##vso[task.setvariable variable=applicationName]$(xmlstarlet sel -N m='http://maven.apache.org/POM/4.0.0' -t -m '/m:project/m:artifactId' -v . pom.xml)"
+    workingDirectory: services/${{ parameters.service }}
+    displayName: Get Application Name
+  
+  - script: echo Application Name = $(applicationName)
+   
+  - bash: find -type f -exec sh -c "envsubst < {} > {}.tmp && mv {}.tmp {}" \;
+    workingDirectory: services/${{ parameters.service }}
+    displayName: Fulfill template
+    env:
+      APPLICATION_NAME: $(applicationName)
+
+  - script: git push origin -d ${{ parameters.service }}-transformation | exit 0
+    displayName: Remove old transformation branch if exists
+  
+  - script: git checkout -b ${{ parameters.service }}-transformation && git add . && git commit -m "Automatic service tranformation for ${{ parameters.service }}"
+    displayName: git commit
+  
+  - script: git push --set-upstream origin ${{ parameters.service }}-transformation
+    displayName: git push

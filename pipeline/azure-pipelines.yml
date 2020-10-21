@@ -1,0 +1,8 @@
+trigger: none
+
+jobs:
+- template: automatic-transformation/pipeline-templates/process-all.yml
+  parameters:
+    serviceList:
+    - example-app-src
+    - example-app-src2
