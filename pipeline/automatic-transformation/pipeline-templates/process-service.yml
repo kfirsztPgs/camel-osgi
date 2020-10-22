@@ -49,14 +49,18 @@ jobs:
     env:
       APPLICATION_NAME: $(applicationName)
 
+# Move Application.java from template to the shortest path of directories that contains .java files in the service.
+  - script: mv template/src/main/java/Application.java $(dirname `find /tmp/services/${{ parameters.service }}/src/main -type f -name '*.java' -printf "%d %p\n" | sort -n | head -1 | awk '{print $2}'`)
+    displayName: Move Application.java
+
   - script: cp -r /tmp/services/${{ parameters.service }}/src/main /tmp/services/${{ parameters.service }}/src/test target/${{ parameters.service }}/src
     displayName: Copy service files to target
 
+  - script: xsltproc automatic-transformation/bean-declarations-transform.xsl /tmp/services/${{ parameters.service }}/src/main/resources/bean-declarations.xml > target/${{ parameters.service }}/src/main/resources/bean-declarations.xml
+    displayName: Transform bean-declarations.xml
+
   - script: cp -r template/* target/${{ parameters.service }}
     displayName: Copy template to target
-
-# THE SHORTEST PATH OF DIRECTORY CONTAINS.java FILE
-# dirname `find -type f -name '*.java' -printf "%d %p\n" | sort -n | head -1 | awk '{print $2}'`
 
   - task: PublishBuildArtifacts@1
     inputs:
@@ -65,9 +69,9 @@ jobs:
 
 #  - script: git push origin -d ${{ parameters.service }}-transformation | exit 0
 #    displayName: Remove old transformation branch if exists
-#  
+#
 #  - script: git checkout -b ${{ parameters.service }}-transformation && git add . && git commit -m "Automatic service tranformation for ${{ parameters.service }}"
 #    displayName: git commit
-#  
+#
 #  - script: git push --set-upstream origin ${{ parameters.service }}-transformation
 #    displayName: git push

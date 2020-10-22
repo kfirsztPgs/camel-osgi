@@ -21,5 +21,15 @@
     <packaging>jar</packaging>
   </xsl:template>
   <xsl:template match="/m:project/m:dependencies/m:dependency[m:groupId = 'org.springframework.osgi']"/>
+  <xsl:template match="/m:project/m:dependencies/m:dependency[m:groupId = 'org.slf4j' and m:artifactId = 'slf4j-api']"/>
   <xsl:template match="/m:project/m:build/m:plugins/m:plugin[m:groupId = 'org.apache.felix' and m:artifactId = 'maven-bundle-plugin']"/>
+  <xsl:template match="/m:project/m:build/m:plugins">
+    <xsl:copy>
+	  <xsl:apply-templates select="node()|@*"/>
+	  <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </xsl:copy>
+  </xsl:template>
 </xsl:stylesheet>

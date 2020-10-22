@@ -1,0 +1,3 @@
+<example>
+  <applicationName>${APPLICATION_NAME}</applicationName>
+</example>
