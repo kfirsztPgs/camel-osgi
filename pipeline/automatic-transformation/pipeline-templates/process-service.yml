@@ -7,22 +7,24 @@ jobs:
   pool:
     vmImage: 'ubuntu-latest'
   steps:
-  - checkout: self
-    persistCredentials: true
-
+#  - checkout: self
+#    persistCredentials: true
   - script: sudo apt-get install -y xsltproc xmlstarlet 
     displayName: Install packages
 
-  - script: git config --global user.email "trans-pipeline@example.com" && git config --global user.name "Tranformation Pipeline"
-    displayName: Configure GIT
+#  - script: git config --global user.email "trans-pipeline@example.com" && git config --global user.name "Tranformation Pipeline"
+#    displayName: Configure GIT
 
   - script: mkdir -p target/${{ parameters.service }}/src
     displayName: Create target directory
 
-  - script: git clone --depth=1 --branch=master $GIT_URL /tmp/services/${{ parameters.service }}
-    displayName: Get ${{ parameters.service }} source
-    env:
-      GIT_URL: https://$(GIT_USER_PASS)@dev.azure.com/pmuszynski/${{ parameters.service }}/_git/${{ parameters.service }}
+#  - script: git clone --depth=1 --branch=master $GIT_URL /tmp/services/${{ parameters.service }}
+#    displayName: Get ${{ parameters.service }} source
+#    env:
+#     GIT_URL: https://stash.aviva.co.uk/scm/intgic/${{ parameters.service }}.git
+
+  - script: mkdir -p /tmp/services && cp -r ${{ parameters.service }} /tmp/services
+    displayName: Copy source files
 
   - script: xsltproc automatic-transformation/pom-transform.xsl /tmp/services/${{ parameters.service }}/pom.xml > target/${{ parameters.service }}/pom.xml
     displayName: Transform pom.xml
@@ -37,29 +39,31 @@ jobs:
 #  Replacing placeholders in all template files
 #
 #  - bash: find -type f -exec sh -c "envsubst < {} > {}.tmp && mv {}.tmp {}" \;
-#    workingDirectory: template
-#    displayName: Fulfill template
+#    workingDirectory: api-spring-boot-template
+#    displayName: Fulfill the template
 #    env:
 #      APPLICATION_NAME: $(applicationName)
 
 # or just in application.yml file only as follow
   - script: envsubst < application.yml > application.yml.tmp && mv application.yml.tmp application.yml
-    workingDirectory: template/src/main/resources
-    displayName: Fulfill template
+    workingDirectory: api-spring-boot-template/src/main/resources
+    displayName: Fulfill the template
     env:
       APPLICATION_NAME: $(applicationName)
 
-# Move Application.java from template to the shortest path of directories that contains .java files in the service.
-  - script: mv template/src/main/java/Application.java $(dirname `find /tmp/services/${{ parameters.service }}/src/main/java -type f -name '*.java' -printf "%d %p\n" | sort -n | head -1 | awk '{print $2}'`)
-    displayName: Move Application.java
-
   - script: cp -r /tmp/services/${{ parameters.service }}/src/main /tmp/services/${{ parameters.service }}/src/test target/${{ parameters.service }}/src
     displayName: Copy service files to target
+    
+  - script: echo "##vso[task.setvariable variable=beanDeclarationFilePath]$(grep -Ril "org.apache.camel.spring.spi.BridgePropertyPlaceholderConfigurer" /tmp/services/${{ parameters.service }}/src/main/resources/META-INF)"
+    displayName: Get Bean Declaration File Path
+  
+  - script: echo Bean Declaration File Path = $(beanDeclarationFilePath)
+    displayName: debug bean declaration file path
 
-  - script: xsltproc automatic-transformation/bean-declarations-transform.xsl /tmp/services/${{ parameters.service }}/src/main/resources/bean-declarations.xml > target/${{ parameters.service }}/src/main/resources/bean-declarations.xml
+  - script: xsltproc automatic-transformation/bean-declarations-transform.xsl $(beanDeclarationFilePath) > $(beanDeclarationFilePath)
     displayName: Transform bean-declarations.xml
 
-  - script: cp -r template/* target/${{ parameters.service }}
+  - script: cp -r api-spring-boot-template/* target/${{ parameters.service }}
     displayName: Copy template to target
 
   - task: PublishBuildArtifacts@1
@@ -69,9 +73,9 @@ jobs:
 
 #  - script: git push origin -d ${{ parameters.service }}-transformation | exit 0
 #    displayName: Remove old transformation branch if exists
-#
+
 #  - script: git checkout -b ${{ parameters.service }}-transformation && git add . && git commit -m "Automatic service tranformation for ${{ parameters.service }}"
 #    displayName: git commit
-#
+
 #  - script: git push --set-upstream origin ${{ parameters.service }}-transformation
 #    displayName: git push
